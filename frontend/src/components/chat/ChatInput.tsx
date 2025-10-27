@@ -32,7 +32,7 @@ export const ChatInput = ({ onSendMessage, disabled }: ChatInputProps) => {
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Type your message..."
+        placeholder="Tapez votre message..."
         disabled={disabled}
         className="min-h-[60px] max-h-[120px] resize-none"
       />

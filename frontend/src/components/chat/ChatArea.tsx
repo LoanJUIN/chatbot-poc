@@ -33,7 +33,7 @@ export const ChatArea = ({ messages, onSendMessage, isLoading }: ChatAreaProps) 
         </div>
         <div>
           <h2 className="font-semibold text-foreground">Assistant IA Interne</h2>
-          <p className="text-xs text-muted-foreground">Always here to help</p>
+          <p className="text-xs text-muted-foreground">Toujours là pour aider</p>
         </div>
       </div>
 
@@ -44,10 +44,10 @@ export const ChatArea = ({ messages, onSendMessage, isLoading }: ChatAreaProps) 
               <Bot className="h-8 w-8 text-primary" />
             </div>
             <h3 className="text-lg font-medium text-foreground mb-2">
-              Welcome to your AI Assistant
+              Bienvenue dans votre Assistant IA
             </h3>
             <p className="text-sm text-muted-foreground max-w-md">
-              Start a conversation by typing your message below. I'm here to help you with any questions or tasks.
+              Commencez une conversation en tapant votre message ci-dessous. Je suis là pour vous aider avec toutes vos questions ou tâches.
             </p>
           </div>
         ) : (

@@ -20,7 +20,7 @@ export const ConversationHistory = ({
 }: ConversationHistoryProps) => {
   return (
     <div className="p-4 bg-card rounded-lg border border-border shadow-sm">
-      <h3 className="text-sm font-medium text-muted-foreground mb-3">Conversation History</h3>
+      <h3 className="text-sm font-medium text-muted-foreground mb-3">Historique</h3>
       <ScrollArea className="h-[400px]">
         <div className="space-y-2">
           {conversations.map((conversation) => (

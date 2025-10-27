@@ -12,7 +12,7 @@ interface UserProfileProps {
 export const UserProfile = ({ userName, userAvatar, userRole, onRoleChange }: UserProfileProps) => {
   return (
     <div className="p-4 bg-card rounded-lg border border-border shadow-sm">
-      <h3 className="text-sm font-medium text-muted-foreground mb-3">User Profile</h3>
+      <h3 className="text-sm font-medium text-muted-foreground mb-3">Profil utilisateur</h3>
       <div className="flex items-center gap-3 mb-4">
         <Avatar className="h-12 w-12">
           <AvatarImage src={userAvatar} alt={userName} />
@@ -25,7 +25,7 @@ export const UserProfile = ({ userName, userAvatar, userRole, onRoleChange }: Us
         </div>
       </div>
       <div>
-        <label className="text-xs text-muted-foreground mb-2 block">Role</label>
+        <label className="text-xs text-muted-foreground mb-2 block">Rôle</label>
         <Select value={userRole} onValueChange={onRoleChange}>
           <SelectTrigger className="w-full">
             <SelectValue />
