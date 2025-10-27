@@ -61,15 +61,15 @@ const Index = () => {
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
+        title: "Erreur",
+        description: "Erreur lors de l'envoi du message. Veuillez réessayer.",
         variant: "destructive",
       });
       
       // Add mock response for demo purposes (remove when backend is ready)
       const mockResponse: Message = {
         role: 'assistant',
-        content: "I'm your AI assistant. Your backend API is not connected yet, but I'm ready to help once it's set up!",
+        content: "Je suis votre assistant IA. Votre API backend n'est pas encore connectée, mais je suis prêt à vous aider une fois qu'elle sera configurée !",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, mockResponse]);
@@ -82,15 +82,15 @@ const Index = () => {
     setSelectedConversationId(id);
     // In a real app, load conversation messages here
     toast({
-      title: "Conversation loaded",
-      description: `Loading conversation: ${conversations.find(c => c.id === id)?.title}`,
+      title: "Historique chargé",
+      description: `Chargement de la conversation : ${conversations.find(c => c.id === id)?.title}`,
     });
   };
 
   return (
     <div className="flex h-screen w-full bg-background">
       <Sidebar
-        userName="John Doe"
+        userName="Loan Juin"
         userRole={userRole}
         onRoleChange={setUserRole}
         conversations={conversations}
