@@ -19,40 +19,58 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 export const chatService = {
   async sendMessage(request: ChatRequest): Promise<ChatMessage> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ message: request.message, profile: request.profile, conversationId: request.conversationId ?? null }),
-      });
+    const response = await fetch(`${API_BASE_URL}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
 
-      if (!response.ok) {
-        throw new Error(`Erreur API (${response.status})`);
-      }
+    if (!response.ok) throw new Error("Erreur API");
 
-      const data: ChatResponse = await response.json();
+    const data = await response.json();
 
-      return {
-        role: "assistant",
-        content: data.response,
-        timestamp: new Date(),
-      };
-    } catch (error) {
-      console.error("Chat service error:", error);
-      throw error;
+    // Si on reçoit un conversationId, on le stocke pour la session
+    if (data.conversationId) {
+      localStorage.setItem("activeConversationId", data.conversationId);
     }
+
+    return {
+      role: "assistant",
+      content: data.response,
+      timestamp: new Date(),
+    };
   },
 
-  async deleteConversation(conversationId: string): Promise<void> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}`, {
-        method: 'DELETE',
-      });
-    } catch (error) {
-      console.error('Chat service error:', error);
-      throw error;
-    }
+  async getAllConversations() {
+    const res = await fetch(`${API_BASE_URL}/api/conversations`);
+    if (!res.ok) throw new Error("Impossible de charger les conversations");
+    const data = await res.json();
+
+    return data.map((conv: any) => ({
+      id: conv.idConversation.toString(),
+      title: conv.titre || "Sans titre",
+      timestamp: new Date(conv.dateCreation),
+      messages: conv.messages?.map((m: any) => ({
+        role: m.auteur === "assistant" ? "assistant" : "user",
+        content: m.contenu,
+        timestamp: new Date(m.dateMessage),
+      })) ?? [],
+    }));
+  },
+
+  async getMessages(conversationId: number) {
+    const res = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/messages`);
+    if (!res.ok) throw new Error("Impossible de charger les messages");
+    const data = await res.json();
+
+    return data.map((m: any) => ({
+      role: m.auteur === "assistant" ? "assistant" : "user",
+      content: m.contenu,
+      timestamp: new Date(m.dateMessage),
+    }));
+  },
+
+  async deleteConversation(conversationId: number) {
+    await fetch(`${API_BASE_URL}/api/conversations/${conversationId}`, { method: "DELETE" });
   },
 };

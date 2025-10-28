@@ -1,5 +1,6 @@
 package com.example.internal_ia.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,6 +27,7 @@ public class Conversation {
     private Utilisateur utilisateur;
 
     @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL)
+    @JsonManagedReference
     private List<Message> messages;
 
 }
