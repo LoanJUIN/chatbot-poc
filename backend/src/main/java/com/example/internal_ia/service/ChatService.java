@@ -29,18 +29,62 @@ public class ChatService {
         this.messageRepository = messageRepository;
     }
 
-    public Mono<String> getChatResponse(String userMessage) {
+    /**
+     * Gère le flux complet : sauvegarde message utilisateur, appel Mistral,
+     * sauvegarde réponse et retour au front.
+     */
+    public Mono<Map<String, Object>> handleChat(String userMessage, Long conversationId) {
+        Conversation conversation;
+
+        // Créer ou récupérer la conversation
+        if (conversationId == null || conversationId == 0) {
+            conversation = new Conversation();
+            conversation.setTitre("Nouvelle conversation");
+            conversation.setDateCreation(LocalDateTime.now());
+            conversation = conversationRepository.save(conversation);
+        } else {
+            conversation = conversationRepository.findById(conversationId)
+                    .orElseThrow(() -> new RuntimeException("Conversation not found"));
+        }
+
+        // Sauvegarder le message utilisateur
+        Message userMsg = new Message();
+        userMsg.setAuteur("user");
+        userMsg.setContenu(userMessage);
+        userMsg.setConversation(conversation);
+        userMsg.setDateMessage(LocalDateTime.now());
+        messageRepository.save(userMsg);
+
+        // Appeler l'API Mistral et sauvegarder la réponse IA
+        Conversation finalConversation = conversation;
+
         return mistralWebClient.post()
                 .uri("/chat/completions")
                 .bodyValue(Map.of(
                         "model", "mistral-tiny",
-                        "messages", new Object[]{
+                        "messages", List.of(
                                 Map.of("role", "user", "content", userMessage)
-                        }
+                        )
                 ))
                 .retrieve()
                 .bodyToMono(Map.class)
-                .map(this::extractMessageContent);
+                .map(response -> {
+                    String aiResponse = extractMessageContent(response);
+
+                    // Sauvegarder le message de l'assistant
+                    Message aiMsg = new Message();
+                    aiMsg.setAuteur("assistant");
+                    aiMsg.setContenu(aiResponse);
+                    aiMsg.setConversation(finalConversation);
+                    aiMsg.setDateMessage(LocalDateTime.now());
+                    messageRepository.save(aiMsg);
+
+                    // Retourner la réponse et l'id de conversation
+                    return Map.of(
+                            "response", aiResponse,
+                            "conversationId", finalConversation.getIdConversation()
+                    );
+                });
     }
 
     @SuppressWarnings("unchecked")
@@ -50,30 +94,4 @@ public class ChatService {
         var messageMap = (Map<String, Object>) choices.get(0).get("message");
         return (String) messageMap.get("content");
     }
-
-    public Message saveMessage(String content, String auteur, Long conversationId) {
-        Conversation conversation;
-
-        if (conversationId == null) {
-            // Crée une nouvelle conversation
-            conversation = new Conversation();
-            conversation.setTitre("Nouvelle conversation");
-            conversation.setDateCreation(LocalDateTime.now());
-            conversation = conversationRepository.save(conversation);
-        } else {
-            // Charge la conversation existante
-            conversation = conversationRepository.findById(conversationId)
-                    .orElseThrow(() -> new RuntimeException("Conversation not found"));
-        }
-
-        //Sauvegarde du message
-        Message message = new Message();
-        message.setAuteur(auteur);
-        message.setContenu(content);
-        message.setConversation(conversation);
-        message.setDateMessage(LocalDateTime.now());
-
-        return messageRepository.save(message);
-    }
 }
-

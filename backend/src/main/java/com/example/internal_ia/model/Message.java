@@ -1,5 +1,6 @@
 package com.example.internal_ia.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,6 +18,7 @@ public class Message {
 
     @ManyToOne
     @JoinColumn(name = "id_conversation")
+    @JsonBackReference
     private Conversation conversation;
 
     private String auteur;
