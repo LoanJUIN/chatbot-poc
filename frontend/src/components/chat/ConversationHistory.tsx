@@ -1,4 +1,4 @@
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Conversation {
@@ -11,12 +11,14 @@ interface ConversationHistoryProps {
   conversations: Conversation[];
   selectedId?: string;
   onSelectConversation: (id: string) => void;
+  onDeleteConversation: (id: string) => void;
 }
 
 export const ConversationHistory = ({
   conversations,
   selectedId,
   onSelectConversation,
+  onDeleteConversation,
 }: ConversationHistoryProps) => {
   return (
     <div className="p-4 bg-card rounded-lg border border-border shadow-sm">
@@ -47,6 +49,7 @@ export const ConversationHistory = ({
                     })}
                   </p>
                 </div>
+                <Trash2 className="h-4 w-4 text-muted-foreground flex-shrink-0" onClick={() => onDeleteConversation(conversation.id)} />
               </div>
             </button>
           ))}
