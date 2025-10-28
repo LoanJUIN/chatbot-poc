@@ -7,6 +7,7 @@ export interface ChatMessage {
 export interface ChatRequest {
   message: string;
   profile: string;
+  conversationId?: number;
 }
 
 export interface ChatResponse {
@@ -24,7 +25,7 @@ export const chatService = {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: request.message }),
+        body: JSON.stringify({ message: request.message, profile: request.profile, conversationId: request.conversationId ?? null }),
       });
 
       if (!response.ok) {
