@@ -15,6 +15,7 @@ interface SidebarProps {
   conversations: Conversation[];
   selectedConversationId?: string;
   onSelectConversation: (id: string) => void;
+  onDeleteConversation: (id: string) => void;
 }
 
 export const Sidebar = ({
@@ -25,6 +26,7 @@ export const Sidebar = ({
   conversations,
   selectedConversationId,
   onSelectConversation,
+  onDeleteConversation,
 }: SidebarProps) => {
   return (
     <aside className="w-80 bg-secondary/30 border-r border-border p-4 flex flex-col gap-4">
@@ -38,6 +40,7 @@ export const Sidebar = ({
         conversations={conversations}
         selectedId={selectedConversationId}
         onSelectConversation={onSelectConversation}
+        onDeleteConversation={onDeleteConversation}
       />
     </aside>
   );

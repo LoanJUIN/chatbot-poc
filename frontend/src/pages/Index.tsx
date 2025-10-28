@@ -87,6 +87,15 @@ const Index = () => {
     });
   };
 
+  const handleDeleteConversation = (id: string) => {
+    // In a real app, you would also remove the conversation from state
+    //passer au backend to delete the conversation
+    toast({
+      title: "Conversation supprimée",
+      description: `La conversation "${conversations.find(c => c.id === id)?.title}" a été supprimée.`,
+    });
+  };
+
   return (
     <div className="flex h-screen w-full bg-background">
       <Sidebar
@@ -96,6 +105,12 @@ const Index = () => {
         conversations={conversations}
         selectedConversationId={selectedConversationId}
         onSelectConversation={handleSelectConversation}
+        onDeleteConversation={(id) => {
+          toast({
+            title: "Conversation supprimée",
+            description: `La conversation "${conversations.find(c => c.id === id)?.title}" a été supprimée.`,
+          });
+        }}
       />
       <main className="flex-1 flex flex-col">
         <ChatArea
