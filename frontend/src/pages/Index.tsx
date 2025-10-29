@@ -17,6 +17,13 @@ const Index = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const handleNewConversation = () => {
+    setMessages([]);
+    setSelectedConversationId(null);
+    localStorage.removeItem("activeConversationId");
+    toast({ title: "Nouvelle conversation", description: "Prêt à démarrer." });
+  };
+
   // Charger les conversations et l’historique au démarrage
   useEffect(() => {
     const loadData = async () => {
@@ -103,9 +110,14 @@ const Index = () => {
         onSelectConversation={(id) => handleSelectConversation(Number(id))}
         onDeleteConversation={(id) => handleDeleteConversation(Number(id))}
       />
-      <main className="flex-1 flex flex-col">
-        <ChatArea messages={messages} onSendMessage={handleSendMessage} isLoading={isLoading} />
-      </main>
+       <main className="flex-1 flex flex-col">
+         <ChatArea
+           messages={messages}
+           onSendMessage={handleSendMessage}
+           isLoading={isLoading}
+           onNewConversation={handleNewConversation}
+         />
+       </main>
     </div>
   );
 };
