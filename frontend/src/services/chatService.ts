@@ -1,76 +1,28 @@
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
+import axios from "axios";
 
-export interface ChatRequest {
-  message: string;
-  profile: string;
-  conversationId?: number;
-}
-
-export interface ChatResponse {
-  response: string;
-}
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
-
+const API_URL = "http://localhost:8080/api/chat";
 
 export const chatService = {
-  async sendMessage(request: ChatRequest): Promise<ChatMessage> {
-    const response = await fetch(`${API_BASE_URL}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    });
+  async sendMessage({
+    message,
+    conversationId,
+  }: {
+    message: string;
+    conversationId?: number | null;
+  }) {
+    const body: any = { message };
+    if (conversationId) body.conversationId = conversationId;
 
-    if (!response.ok) throw new Error("Erreur API");
-
-    const data = await response.json();
-
-    // Si on reçoit un conversationId, on le stocke pour la session
-    if (data.conversationId) {
-      localStorage.setItem("activeConversationId", data.conversationId);
-    }
+    const { data } = await axios.post(API_URL, body);
 
     return {
-      role: "assistant",
       content: data.response,
-      timestamp: new Date(),
+      conversationId: data.conversationId,
     };
   },
 
-  async getAllConversations() {
-    const res = await fetch(`${API_BASE_URL}/api/conversations`);
-    if (!res.ok) throw new Error("Impossible de charger les conversations");
-    const data = await res.json();
-
-    return data.map((conv: any) => ({
-      id: conv.idConversation.toString(),
-      title: conv.titre || "Sans titre",
-      timestamp: new Date(conv.dateCreation),
-      messages: conv.messages?.map((m: any) => ({
-        role: m.auteur === "assistant" ? "assistant" : "user",
-        content: m.contenu,
-        timestamp: new Date(m.dateMessage),
-      })) ?? [],
-    }));
-  },
-
-  async getMessages(conversationId: number) {
-    const res = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/messages`);
-    if (!res.ok) throw new Error("Impossible de charger les messages");
-    const data = await res.json();
-
-    return data.map((m: any) => ({
-      role: m.auteur === "assistant" ? "assistant" : "user",
-      content: m.contenu,
-      timestamp: new Date(m.dateMessage),
-    }));
-  },
-
-  async deleteConversation(conversationId: number) {
-    await fetch(`${API_BASE_URL}/api/conversations/${conversationId}`, { method: "DELETE" });
+  async getConversationById(id: number) {
+    const { data } = await axios.get(`http://localhost:8080/api/conversations/${id}`);
+    return data;
   },
 };

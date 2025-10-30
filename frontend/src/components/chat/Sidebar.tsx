@@ -1,18 +1,14 @@
 import { UserProfile } from "./UserProfile";
 import { ConversationHistory } from "./ConversationHistory";
+import { ConversationInterface } from "@/interfaces/ConversationInterface";
 
-interface Conversation {
-  id: string;
-  title: string;
-  timestamp: Date;
-}
 
 interface SidebarProps {
   userName: string;
   userAvatar?: string;
   userRole: string;
   onRoleChange: (role: string) => void;
-  conversations: Conversation[];
+  conversations: ConversationInterface[];
   selectedConversationId?: string;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;

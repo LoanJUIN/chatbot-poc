@@ -1,31 +1,22 @@
 package com.example.internal_ia.controller;
 
+import com.example.internal_ia.dto.ChatRequestDto;
+import com.example.internal_ia.dto.ChatResponseDto;
 import com.example.internal_ia.service.ChatService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
-import java.util.Map;
+@RestController
+@RequestMapping("/api/chat")
+@CrossOrigin(origins = "*")
+@RequiredArgsConstructor
+public class ChatController {
 
-    @RestController
-    @RequestMapping("/api/chat")
-    @CrossOrigin(origins = "*")
-    public class ChatController {
+    private final ChatService chatService;
 
-        private final ChatService chatService;
-
-        @Autowired
-        public ChatController(ChatService chatService) {
-            this.chatService = chatService;
-        }
-
-        @PostMapping
-        public Mono<Map<String, Object>> chat(@RequestBody Map<String, Object> body) {
-            String message = (String) body.get("message");
-            Long conversationId = body.get("conversationId") != null
-                    ? Long.valueOf(body.get("conversationId").toString())
-                    : null;
-
-            return chatService.handleChat(message, conversationId);
-        }
+    @PostMapping
+    public Mono<ChatResponseDto> chat(@RequestBody ChatRequestDto request) {
+        return chatService.handleChat(request);
     }
+}

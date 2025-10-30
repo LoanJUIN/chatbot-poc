@@ -1,9 +1,15 @@
 package com.example.internal_ia.model;
 
 import jakarta.persistence.*;
+import lombok.*;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 public class Utilisateur {
 
