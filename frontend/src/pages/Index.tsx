@@ -65,10 +65,12 @@ const Index = () => {
 
   const handleSendMessage = async (message: string) => {
     setIsLoading(true);
-    const currentId = selectedConversation?.idConversation ?? Number(localStorage.getItem("activeConversationId")) ?? null;
+    const currentId =
+      selectedConversation?.idConversation ??
+      Number(localStorage.getItem("activeConversationId")) ??
+      null;
 
     try {
-      // Ajout du message utilisateur
       const userMessage: MessageInterface = {
         idMessage: Date.now(),
         auteur: "user",
@@ -76,17 +78,29 @@ const Index = () => {
         dateMessage: new Date().toISOString(),
       };
 
-      const updatedConv = {
-        ...selectedConversation,
-        messages: [...(selectedConversation?.messages ?? []), userMessage],
-      } as ConversationInterface;
-      setSelectedConversation(updatedConv);
+      setSelectedConversation((prev) =>
+        prev
+          ? { ...prev, messages: [...(prev.messages ?? []), userMessage] }
+          : {
+              idConversation: 0,
+              titre: "Nouvelle conversation",
+              dateCreation: new Date().toISOString(),
+              messages: [userMessage],
+            }
+      );
 
       const response = await chatService.sendMessage({
         message,
-        profile: "user",
         conversationId: currentId ?? undefined,
       });
+
+      if (!currentId && response.conversationId) {
+        localStorage.setItem("activeConversationId", response.conversationId.toString());
+        const newConv = await conversationService.getById(response.conversationId);
+        setSelectedConversation(newConv);
+        setConversations((prev) => [newConv, ...prev]);
+        return;
+      }
 
       const assistantMessage: MessageInterface = {
         idMessage: Date.now() + 1,
@@ -95,11 +109,13 @@ const Index = () => {
         dateMessage: new Date().toISOString(),
       };
 
-      setSelectedConversation(prev => ({
-        ...prev!,
-        messages: [...(prev?.messages ?? []), assistantMessage],
-      }));
-    } catch {
+      setSelectedConversation((prev) =>
+        prev
+          ? { ...prev, messages: [...(prev.messages ?? []), assistantMessage] }
+          : null
+      );
+    } catch (error) {
+      console.error(error);
       toast({ title: "Erreur", description: "Échec de l’envoi du message." });
     } finally {
       setIsLoading(false);
