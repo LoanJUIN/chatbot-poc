@@ -1,10 +1,12 @@
 package com.example.internal_ia.service;
 
+import com.example.internal_ia.dto.ChatRequestDto;
+import com.example.internal_ia.dto.ChatResponseDto;
 import com.example.internal_ia.model.Conversation;
 import com.example.internal_ia.model.Message;
 import com.example.internal_ia.repository.ConversationRepository;
 import com.example.internal_ia.repository.MessageRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -14,77 +16,93 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class ChatService {
 
     private final WebClient mistralWebClient;
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
 
-    @Autowired
-    public ChatService(WebClient mistralWebClient,
-                       ConversationRepository conversationRepository,
-                       MessageRepository messageRepository) {
-        this.mistralWebClient = mistralWebClient;
-        this.conversationRepository = conversationRepository;
-        this.messageRepository = messageRepository;
-    }
-
     /**
-     * Gère le flux complet : sauvegarde message utilisateur, appel Mistral,
-     * sauvegarde réponse et retour au front.
+     * Gère la logique complète d’un échange avec Mistral :
+     * - création ou récupération de la conversation
+     * - sauvegarde des messages
+     * - appel du modèle
+     * - retour DTO propre
      */
-    public Mono<Map<String, Object>> handleChat(String userMessage, Long conversationId) {
-        Conversation conversation;
+    public Mono<ChatResponseDto> handleChat(ChatRequestDto request) {
+        String userMessage = request.getMessage();
+        Long conversationId = request.getConversationId();
 
-        // Créer ou récupérer la conversation
-        if (conversationId == null || conversationId == 0) {
-            conversation = new Conversation();
-            conversation.setTitre("Nouvelle conversation");
-            conversation.setDateCreation(LocalDateTime.now());
-            conversation = conversationRepository.save(conversation);
-        } else {
-            conversation = conversationRepository.findById(conversationId)
-                    .orElseThrow(() -> new RuntimeException("Conversation not found"));
-        }
+        // Crée ou récupère la conversation
+        Conversation conversation = getOrCreateConversation(conversationId,  userMessage);
 
-        // Sauvegarder le message utilisateur
-        Message userMsg = new Message();
-        userMsg.setAuteur("user");
-        userMsg.setContenu(userMessage);
-        userMsg.setConversation(conversation);
-        userMsg.setDateMessage(LocalDateTime.now());
-        messageRepository.save(userMsg);
+        // Sauvegarde le message utilisateur
+        saveMessage("user", userMessage, conversation);
 
-        // Appeler l'API Mistral et sauvegarder la réponse IA
-        Conversation finalConversation = conversation;
-
+        // Appel Mistral
         return mistralWebClient.post()
                 .uri("/chat/completions")
                 .bodyValue(Map.of(
                         "model", "mistral-tiny",
-                        "messages", List.of(
-                                Map.of("role", "user", "content", userMessage)
-                        )
+                        "messages", List.of(Map.of("role", "user", "content", userMessage))
                 ))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(response -> {
                     String aiResponse = extractMessageContent(response);
+                    saveMessage("assistant", aiResponse, conversation);
 
-                    // Sauvegarder le message de l'assistant
-                    Message aiMsg = new Message();
-                    aiMsg.setAuteur("assistant");
-                    aiMsg.setContenu(aiResponse);
-                    aiMsg.setConversation(finalConversation);
-                    aiMsg.setDateMessage(LocalDateTime.now());
-                    messageRepository.save(aiMsg);
-
-                    // Retourner la réponse et l'id de conversation
-                    return Map.of(
-                            "response", aiResponse,
-                            "conversationId", finalConversation.getIdConversation()
-                    );
+                    return ChatResponseDto.builder()
+                            .response(aiResponse)
+                            .conversationId(conversation.getIdConversation())
+                            .build();
                 });
+    }
+    
+    private Conversation getOrCreateConversation(Long conversationId, String userMessage) {
+        if (conversationId == null || conversationId == 0) {
+            String generatedTitle = generateTitleFromMessage(userMessage);
+            return conversationRepository.save(
+                    Conversation.builder()
+                            .titre(generatedTitle)
+                            .dateCreation(LocalDateTime.now())
+                            .build()
+            );
+        }
+        return conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new RuntimeException("Conversation non trouvée"));
+    }
+
+    private void saveMessage(String auteur, String contenu, Conversation conversation) {
+        messageRepository.save(
+                Message.builder()
+                        .auteur(auteur)
+                        .contenu(contenu)
+                        .conversation(conversation)
+                        .dateMessage(LocalDateTime.now())
+                        .build()
+        );
+    }
+
+    private String generateTitleFromMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return "Nouvelle conversation";
+        }
+
+        String trimmed = message.trim();
+
+        // Nettoie les retours à la ligne et espace multiples
+        trimmed = trimmed.replaceAll("\\s+", " ");
+
+        // Tronque à 20 caractères environ
+        int maxLength = 25;
+        if (trimmed.length() > maxLength) {
+            trimmed = trimmed.substring(0, maxLength).trim() + "...";
+        }
+
+        // Met la première lettre en majuscule pour un rendu plus propre
+        return Character.toUpperCase(trimmed.charAt(0)) + trimmed.substring(1);
     }
 
     @SuppressWarnings("unchecked")
