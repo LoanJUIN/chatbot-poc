@@ -3,15 +3,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { Bot } from "lucide-react";
+import { MessageInterface } from "@/interfaces/MessageInterface";
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
 
 interface ChatAreaProps {
-  messages: Message[];
+  messages: MessageInterface[];
   onSendMessage: (message: string) => void;
   isLoading?: boolean;
   onNewConversation: () => void;
@@ -66,9 +62,9 @@ export const ChatArea = ({ messages, onSendMessage, isLoading, onNewConversation
             {messages.map((message, index) => (
               <ChatMessage
                 key={index}
-                role={message.role}
-                content={message.content}
-                timestamp={message.timestamp}
+                role={message.auteur}
+                content={message.contenu}
+                timestamp={new Date(message.dateMessage)}
               />
             ))}
             {isLoading && (

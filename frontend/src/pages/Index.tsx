@@ -2,101 +2,108 @@ import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/chat/Sidebar";
 import { ChatArea } from "@/components/chat/ChatArea";
 import { chatService } from "@/services/chatService";
+import { conversationService } from "@/services/conversationService";
 import { useToast } from "@/hooks/use-toast";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-}
+import { ConversationInterface } from "@/interfaces/ConversationInterface";
+import { MessageInterface } from "@/interfaces/MessageInterface";
 
 const Index = () => {
   const { toast } = useToast();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [conversations, setConversations] = useState<any[]>([]);
-  const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
+
+  const [conversations, setConversations] = useState<ConversationInterface[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<ConversationInterface | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleNewConversation = () => {
-    setMessages([]);
-    setSelectedConversationId(null);
-    localStorage.removeItem("activeConversationId");
-    toast({ title: "Nouvelle conversation", description: "Prêt à démarrer." });
-  };
-
-  // Charger les conversations et l’historique au démarrage
+  // Charger les conversations au démarrage
   useEffect(() => {
-    const loadData = async () => {
+    const load = async () => {
       try {
-        const convs = await chatService.getAllConversations();
+        const convs = await conversationService.getAll();
         setConversations(convs);
 
         const savedId = localStorage.getItem("activeConversationId");
         if (savedId) {
-          setSelectedConversationId(Number(savedId));
-          const selectedConv = convs.find(c => c.id === savedId);
-          if (selectedConv && selectedConv.messages.length > 0) {
-            setMessages(selectedConv.messages);
-          } else {
-            const msgs = await chatService.getMessages(Number(savedId));
-            setMessages(msgs);
-          }
+          const conv = convs.find(c => c.idConversation === Number(savedId));
+          if (conv) setSelectedConversation(conv);
         }
       } catch {
-        toast({ title: "Erreur", description: "Impossible de charger l'historique." });
+        toast({ title: "Erreur", description: "Impossible de charger les conversations." });
       }
     };
-    loadData();
+    load();
   }, []);
 
+  const handleNewConversation = () => {
+    setSelectedConversation(null);
+    localStorage.removeItem("activeConversationId");
+    toast({ title: "Nouvelle conversation", description: "Prêt à démarrer." });
+  };
+
+  const handleSelectConversation = async (id: number) => {
+    try {
+      const conv = await conversationService.getById(id);
+      setSelectedConversation(conv);
+      localStorage.setItem("activeConversationId", id.toString());
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de charger la conversation." });
+    }
+  };
+
+  const handleDeleteConversation = async (id: number) => {
+    try {
+      await conversationService.deleteById(id);
+      setConversations(prev => prev.filter(c => c.idConversation !== id));
+      if (selectedConversation?.idConversation === id) {
+        setSelectedConversation(null);
+        localStorage.removeItem("activeConversationId");
+      }
+      toast({ title: "Conversation supprimée" });
+    } catch {
+      toast({ title: "Erreur", description: "Échec de la suppression." });
+    }
+  };
 
   const handleSendMessage = async (message: string) => {
     setIsLoading(true);
-    const currentId = selectedConversationId ?? Number(localStorage.getItem("activeConversationId")) ?? null;
+    const currentId = selectedConversation?.idConversation ?? Number(localStorage.getItem("activeConversationId")) ?? null;
 
     try {
-      const userMessage: Message = { role: "user", content: message, timestamp: new Date() };
-      setMessages((prev) => [...prev, userMessage]);
+      // Ajout du message utilisateur
+      const userMessage: MessageInterface = {
+        idMessage: Date.now(),
+        auteur: "user",
+        contenu: message,
+        dateMessage: new Date().toISOString(),
+      };
+
+      const updatedConv = {
+        ...selectedConversation,
+        messages: [...(selectedConversation?.messages ?? []), userMessage],
+      } as ConversationInterface;
+      setSelectedConversation(updatedConv);
 
       const response = await chatService.sendMessage({
         message,
         profile: "user",
-        conversationId: currentId,
+        conversationId: currentId ?? undefined,
       });
 
-      setMessages((prev) => [...prev, response]);
+      const assistantMessage: MessageInterface = {
+        idMessage: Date.now() + 1,
+        auteur: "assistant",
+        contenu: response.content,
+        dateMessage: new Date().toISOString(),
+      };
 
-      // Mise à jour de l’ID de conversation s’il a été créé
-      if (!currentId && localStorage.getItem("activeConversationId")) {
-        setSelectedConversationId(Number(localStorage.getItem("activeConversationId")));
-      }
+      setSelectedConversation(prev => ({
+        ...prev!,
+        messages: [...(prev?.messages ?? []), assistantMessage],
+      }));
     } catch {
-      toast({ title: "Erreur", description: "Échec de l’envoi du message.", variant: "destructive" });
+      toast({ title: "Erreur", description: "Échec de l’envoi du message." });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleSelectConversation = async (id: number) => {
-    setSelectedConversationId(id);
-    localStorage.setItem("activeConversationId", id.toString());
-    const msgs = await chatService.getMessages(id);
-    setMessages(msgs.map((m: any) => ({
-      role: m.auteur === "assistant" ? "assistant" : "user",
-      content: m.contenu,
-      timestamp: new Date(m.dateMessage?.split(".")[0]),
-    })));
-  };
-
-  const handleDeleteConversation = async (id: number) => {
-    await chatService.deleteConversation(id);
-    setConversations((prev) => prev.filter((c) => c.id !== id));
-    if (selectedConversationId === id) {
-      setMessages([]);
-      localStorage.removeItem("activeConversationId");
-      setSelectedConversationId(null);
-    }
-    toast({ title: "Conversation supprimée" });
   };
 
   return (
@@ -106,18 +113,18 @@ const Index = () => {
         userRole="standard"
         onRoleChange={() => {}}
         conversations={conversations}
-        selectedConversationId={selectedConversationId?.toString()}
+        selectedConversationId={selectedConversation?.idConversation?.toString()}
         onSelectConversation={(id) => handleSelectConversation(Number(id))}
         onDeleteConversation={(id) => handleDeleteConversation(Number(id))}
       />
-       <main className="flex-1 flex flex-col">
-         <ChatArea
-           messages={messages}
-           onSendMessage={handleSendMessage}
-           isLoading={isLoading}
-           onNewConversation={handleNewConversation}
-         />
-       </main>
+      <main className="flex-1 flex flex-col">
+        <ChatArea
+          messages={selectedConversation?.messages ?? []}
+          onSendMessage={handleSendMessage}
+          isLoading={isLoading}
+          onNewConversation={handleNewConversation}
+        />
+      </main>
     </div>
   );
 };
