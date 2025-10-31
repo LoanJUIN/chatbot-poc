@@ -1,107 +1,144 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/chat/Sidebar";
 import { ChatArea } from "@/components/chat/ChatArea";
 import { chatService } from "@/services/chatService";
+import { conversationService } from "@/services/conversationService";
 import { useToast } from "@/hooks/use-toast";
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
+import { ConversationInterface } from "@/interfaces/ConversationInterface";
+import { MessageInterface } from "@/interfaces/MessageInterface";
 
 const Index = () => {
   const { toast } = useToast();
-  const [userRole, setUserRole] = useState("standard");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedConversationId, setSelectedConversationId] = useState<string>();
 
-  // Mock conversation history
-  const conversations = [
-    {
-      id: "1",
-      title: "Project planning discussion",
-      timestamp: new Date(2025, 9, 20, 14, 30),
-    },
-    {
-      id: "2",
-      title: "Technical documentation help",
-      timestamp: new Date(2025, 9, 21, 10, 15),
-    },
-    {
-      id: "3",
-      title: "Code review questions",
-      timestamp: new Date(2025, 9, 22, 9, 0),
-    },
-  ];
+  const [conversations, setConversations] = useState<ConversationInterface[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<ConversationInterface | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Charger les conversations au démarrage
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const convs = await conversationService.getAll();
+        setConversations(convs);
+
+        const savedId = localStorage.getItem("activeConversationId");
+        if (savedId) {
+          const conv = convs.find(c => c.idConversation === Number(savedId));
+          if (conv) setSelectedConversation(conv);
+        }
+      } catch {
+        toast({ title: "Erreur", description: "Impossible de charger les conversations." });
+      }
+    };
+    load();
+  }, []);
+
+  const handleNewConversation = () => {
+    setSelectedConversation(null);
+    localStorage.removeItem("activeConversationId");
+    toast({ title: "Nouvelle conversation", description: "Prêt à démarrer." });
+  };
+
+  const handleSelectConversation = async (id: number) => {
+    try {
+      const conv = await conversationService.getById(id);
+      setSelectedConversation(conv);
+      localStorage.setItem("activeConversationId", id.toString());
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de charger la conversation." });
+    }
+  };
+
+  const handleDeleteConversation = async (id: number) => {
+    try {
+      await conversationService.deleteById(id);
+      setConversations(prev => prev.filter(c => c.idConversation !== id));
+      if (selectedConversation?.idConversation === id) {
+        setSelectedConversation(null);
+        localStorage.removeItem("activeConversationId");
+      }
+      toast({ title: "Conversation supprimée" });
+    } catch {
+      toast({ title: "Erreur", description: "Échec de la suppression." });
+    }
+  };
 
   const handleSendMessage = async (message: string) => {
-    // Add user message
-    const userMessage: Message = {
-      role: 'user',
-      content: message,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
+    const currentId =
+      selectedConversation?.idConversation ??
+      Number(localStorage.getItem("activeConversationId")) ??
+      null;
 
     try {
+      const userMessage: MessageInterface = {
+        idMessage: Date.now(),
+        auteur: "user",
+        contenu: message,
+        dateMessage: new Date().toISOString(),
+      };
+
+      setSelectedConversation((prev) =>
+        prev
+          ? { ...prev, messages: [...(prev.messages ?? []), userMessage] }
+          : {
+              idConversation: 0,
+              titre: "Nouvelle conversation",
+              dateCreation: new Date().toISOString(),
+              messages: [userMessage],
+            }
+      );
+
       const response = await chatService.sendMessage({
         message,
-        profile: userRole,
+        conversationId: currentId ?? undefined,
       });
 
-      // Add assistant response
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: response.message,
-        timestamp: new Date(response.timestamp),
+      if (!currentId && response.conversationId) {
+        localStorage.setItem("activeConversationId", response.conversationId.toString());
+        const newConv = await conversationService.getById(response.conversationId);
+        setSelectedConversation(newConv);
+        setConversations((prev) => [newConv, ...prev]);
+        return;
+      }
+
+      const assistantMessage: MessageInterface = {
+        idMessage: Date.now() + 1,
+        auteur: "assistant",
+        contenu: response.content,
+        dateMessage: new Date().toISOString(),
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+
+      setSelectedConversation((prev) =>
+        prev
+          ? { ...prev, messages: [...(prev.messages ?? []), assistantMessage] }
+          : null
+      );
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
-      
-      // Add mock response for demo purposes (remove when backend is ready)
-      const mockResponse: Message = {
-        role: 'assistant',
-        content: "I'm your AI assistant. Your backend API is not connected yet, but I'm ready to help once it's set up!",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, mockResponse]);
+      console.error(error);
+      toast({ title: "Erreur", description: "Échec de l’envoi du message." });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSelectConversation = (id: string) => {
-    setSelectedConversationId(id);
-    // In a real app, load conversation messages here
-    toast({
-      title: "Conversation loaded",
-      description: `Loading conversation: ${conversations.find(c => c.id === id)?.title}`,
-    });
-  };
-
   return (
     <div className="flex h-screen w-full bg-background">
       <Sidebar
-        userName="John Doe"
-        userRole={userRole}
-        onRoleChange={setUserRole}
+        userName="Loan Juin"
+        userRole="standard"
+        onRoleChange={() => {}}
         conversations={conversations}
-        selectedConversationId={selectedConversationId}
-        onSelectConversation={handleSelectConversation}
+        selectedConversationId={selectedConversation?.idConversation?.toString()}
+        onSelectConversation={(id) => handleSelectConversation(Number(id))}
+        onDeleteConversation={(id) => handleDeleteConversation(Number(id))}
       />
       <main className="flex-1 flex flex-col">
         <ChatArea
-          messages={messages}
+          messages={selectedConversation?.messages ?? []}
           onSendMessage={handleSendMessage}
           isLoading={isLoading}
+          onNewConversation={handleNewConversation}
         />
       </main>
     </div>

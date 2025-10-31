@@ -1,20 +1,17 @@
 import { UserProfile } from "./UserProfile";
 import { ConversationHistory } from "./ConversationHistory";
+import { ConversationInterface } from "@/interfaces/ConversationInterface";
 
-interface Conversation {
-  id: string;
-  title: string;
-  timestamp: Date;
-}
 
 interface SidebarProps {
   userName: string;
   userAvatar?: string;
   userRole: string;
   onRoleChange: (role: string) => void;
-  conversations: Conversation[];
+  conversations: ConversationInterface[];
   selectedConversationId?: string;
   onSelectConversation: (id: string) => void;
+  onDeleteConversation: (id: string) => void;
 }
 
 export const Sidebar = ({
@@ -25,6 +22,7 @@ export const Sidebar = ({
   conversations,
   selectedConversationId,
   onSelectConversation,
+  onDeleteConversation,
 }: SidebarProps) => {
   return (
     <aside className="w-80 bg-secondary/30 border-r border-border p-4 flex flex-col gap-4">
@@ -38,6 +36,7 @@ export const Sidebar = ({
         conversations={conversations}
         selectedId={selectedConversationId}
         onSelectConversation={onSelectConversation}
+        onDeleteConversation={onDeleteConversation}
       />
     </aside>
   );

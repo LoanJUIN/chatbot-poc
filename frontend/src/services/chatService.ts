@@ -1,38 +1,28 @@
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
+import axios from "axios";
 
-export interface ChatRequest {
-  message: string;
-  profile: string;
-}
-
-export interface ChatResponse {
-  message: string;
-  timestamp: string;
-}
+const API_URL = "http://localhost:8080/api/chat";
 
 export const chatService = {
-  async sendMessage(request: ChatRequest): Promise<ChatResponse> {
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request),
-      });
+  async sendMessage({
+    message,
+    conversationId,
+  }: {
+    message: string;
+    conversationId?: number | null;
+  }) {
+    const body: any = { message };
+    if (conversationId) body.conversationId = conversationId;
 
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
+    const { data } = await axios.post(API_URL, body);
 
-      return await response.json();
-    } catch (error) {
-      console.error('Chat service error:', error);
-      throw error;
-    }
+    return {
+      content: data.response,
+      conversationId: data.conversationId,
+    };
+  },
+
+  async getConversationById(id: number) {
+    const { data } = await axios.get(`http://localhost:8080/api/conversations/${id}`);
+    return data;
   },
 };
